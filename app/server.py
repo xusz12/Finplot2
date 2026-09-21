@@ -5,7 +5,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from ledger import category_totals, monthly_totals, recent_transactions
+from ledger import category_totals, monthly_totals, period_totals, recent_transactions
 
 ROOT = Path(__file__).resolve().parent
 
@@ -20,9 +20,12 @@ class Handler(SimpleHTTPRequestHandler):
             query = parse_qs(parsed.query)
             month = query.get("month", ["2026-09"])[0]
             natures = tuple(query.get("nature", [])) or None
+            period = query.get("period", ["month"])[0]
+            year = month[:4]
             payload = {
                 "month": month,
-                "totals": monthly_totals(month, natures=natures),
+                "period": period,
+                "totals": period_totals(year, natures=natures) if period == "year" else monthly_totals(month, natures=natures),
                 "categories": category_totals(month, "支出", natures=natures)[:8],
                 "recent": recent_transactions(month, limit=10),
             }

@@ -71,6 +71,27 @@ def monthly_totals(
     return {"income_cents": totals["收入"], "expense_cents": totals["支出"], "balance_cents": totals["结余"]}
 
 
+def period_totals(
+    year: str,
+    *,
+    database: str | Path = DEFAULT_DATABASE,
+    natures: tuple[str, ...] | None = None,
+) -> dict[str, int]:
+    """Return totals for a calendar year, still aggregated in integer cents."""
+    clause, args = _nature_clause(natures)
+    with connect(database) as db:
+        rows = db.execute(
+            """SELECT t.direction, COALESCE(SUM(t.amount_cents), 0) AS cents
+               FROM transactions t JOIN categories c ON c.id = t.category_id
+               WHERE substr(t.occurred_at, 1, 4) = ?""" + clause + " GROUP BY t.direction",
+            [year, *args],
+        ).fetchall()
+    totals = {"收入": 0, "支出": 0}
+    totals.update({row["direction"]: int(row["cents"]) for row in rows})
+    totals["结余"] = totals["收入"] - totals["支出"]
+    return {"income_cents": totals["收入"], "expense_cents": totals["支出"], "balance_cents": totals["结余"]}
+
+
 def category_totals(
     month: str,
     direction: str,
