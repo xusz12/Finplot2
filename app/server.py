@@ -22,11 +22,12 @@ class Handler(SimpleHTTPRequestHandler):
             natures = tuple(query.get("nature", [])) or None
             period = query.get("period", ["month"])[0]
             year = month[:4]
+            direction = query.get("direction", ["支出"])[0]
             payload = {
                 "month": month,
                 "period": period,
                 "totals": period_totals(year, natures=natures) if period == "year" else monthly_totals(month, natures=natures),
-                "categories": category_totals(month, "支出", natures=natures)[:8],
+                "categories": category_totals(month, direction, natures=natures)[:8],
                 "recent": recent_transactions(month, limit=10),
             }
             body = json.dumps(payload, ensure_ascii=False).encode()
