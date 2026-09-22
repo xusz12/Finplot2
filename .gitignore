@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+.finplot-database
 data/*
 !data/.gitkeep
 *.sqlite

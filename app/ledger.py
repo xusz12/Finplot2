@@ -15,6 +15,7 @@ from typing import Iterator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATABASE_ENV = "FINPLOT_DATABASE"
+DATABASE_CONFIG = PROJECT_ROOT / ".finplot-database"
 
 
 def resolve_database(database: str | Path | None = None) -> Path:
@@ -28,6 +29,8 @@ def resolve_database(database: str | Path | None = None) -> Path:
         path = Path(database).expanduser()
     elif os.environ.get(DATABASE_ENV):
         path = Path(os.environ[DATABASE_ENV]).expanduser()
+    elif DATABASE_CONFIG.is_file() and DATABASE_CONFIG.read_text().strip():
+        path = Path(DATABASE_CONFIG.read_text().strip()).expanduser()
     else:
         candidates = sorted(
             path for pattern in ("*.sqlite3", "*.sqlite", "*.db")

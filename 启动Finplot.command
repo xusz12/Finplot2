@@ -11,10 +11,19 @@ if [[ ! -d "data" ]]; then
   exit 1
 fi
 
-if ! python3 -c 'import sys; sys.path.insert(0, "app"); from ledger import resolve_database; print(resolve_database())' >/dev/null 2> /tmp/finplot-db-error; then
-  message=$(cat /tmp/finplot-db-error)
-  osascript -e "display alert \"Finplot 无法定位账单数据库\" message \"$message\""
-  exit 1
+if ! python3 -c 'import sys; sys.path.insert(0, "app"); from ledger import resolve_database; resolve_database()' >/dev/null 2> /tmp/finplot-db-error; then
+  selected=$(osascript <<'APPLESCRIPT'
+tell application "Finder"
+  activate
+  set chosenFile to choose file with prompt "请选择 Finplot 使用的账单数据库"
+  return POSIX path of chosenFile
+end tell
+APPLESCRIPT
+  )
+  if [[ -z "$selected" ]]; then
+    exit 1
+  fi
+  print -rn -- "$selected" > .finplot-database
 fi
 
 python3 app/server.py &
