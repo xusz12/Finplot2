@@ -52,3 +52,10 @@
 ## 验收
 
 在同一窗口宽度、缩放比例和数据条件下比较预览图与实现。逐项检查信息主次、模块比例、文字换行、数字对齐、间距、图表标签及横向溢出。不要仅以颜色和圆角接近作为还原完成标准。
+
+
+## 真实应用 v0.1.1
+
+`app/` 使用独立的收入／支出语义变量：收入 #b34436、支出 #24734f；蓝色保留为交互强调。收入采用实心图形、支出采用斜纹图形，图例与图表保持一致。差额以盈余／超支／收支平衡的文字补充颜色，零值与空记录保持中性；隐私模式隐藏差额状态。以上是对真实应用的迭代，原始设计文件与预览保留。
+
+参考：[Apple HIG Charts](https://developer.apple.com/design/human-interface-guidelines/charts#Platform-considerations)、[Inclusive color](https://developer.apple.com/design/human-interface-guidelines/color#Inclusive-color)。
