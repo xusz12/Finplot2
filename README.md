@@ -17,6 +17,8 @@ Finplot 是一个个人财务分析 Web 应用。当前工作区以「澄明 Fol
 open design/index.html
 ```
 
+启动真实账本（macOS）：双击项目根目录的 `启动Finplot.command`。它会自动定位 `data/` 中唯一的 SQLite 文件，启动服务并打开浏览器。
+
 ## 数据基线
 
 备份包含 1,667 笔交易，时间范围为 2024-07-18 至 2026-09-21；57 个分类和 19 个分类组。金额以 `amount_cents` 整数分保存，展示时换算为人民币元。收支方向为 `收入` / `支出`，分类性质为 `日常` / `投资` / `往来` / `调整`。
@@ -61,6 +63,13 @@ cd Finplot2
 python3 app/server.py
 ```
 
-数据库工作副本不会随仓库分发。要在其他机器使用，需要将本地账本放到 `data/ledger_2026-09-22.sqlite3`；该文件已被 `.gitignore` 排除。
+数据库工作副本不会随仓库分发。换机器从 GitHub clone 后，将本机账单 SQLite 文件复制到项目的 `data/` 目录即可；程序会自动使用其中唯一的 `.sqlite3`、`.sqlite` 或 `.db` 文件。也可以设置 `FINPLOT_DATABASE` 指向任意路径（支持相对项目路径和绝对路径）：
+
+```bash
+export FINPLOT_DATABASE="$HOME/Documents/ledger.sqlite3"
+python3 app/server.py
+```
+
+如果 `data/` 中有多个数据库，程序会停止并列出候选文件，要求通过 `FINPLOT_DATABASE` 明确指定，避免误读账单。`.env.example` 提供了变量示例；项目不会自动读取 `.env`，启动前请在 Finder、终端或自己的启动脚本中设置环境变量。
 
 当前版本：`v0.1.0`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。

@@ -8,17 +8,56 @@ floating point accumulation errors.
 from __future__ import annotations
 
 import sqlite3
+import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-DEFAULT_DATABASE = Path(__file__).resolve().parents[1] / "data" / "ledger_2026-09-22.sqlite3"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATABASE_ENV = "FINPLOT_DATABASE"
+
+
+def resolve_database(database: str | Path | None = None) -> Path:
+    """Resolve a local ledger without embedding a machine-specific path.
+
+    Priority: explicit argument, FINPLOT_DATABASE, then one SQLite file in
+    the repository's data directory. Multiple candidates are rejected so a
+    machine cannot silently display the wrong ledger.
+    """
+    if database:
+        path = Path(database).expanduser()
+    elif os.environ.get(DATABASE_ENV):
+        path = Path(os.environ[DATABASE_ENV]).expanduser()
+    else:
+        candidates = sorted(
+            path for pattern in ("*.sqlite3", "*.sqlite", "*.db")
+            for path in (PROJECT_ROOT / "data").glob(pattern)
+            if path.is_file()
+        )
+        if len(candidates) == 1:
+            path = candidates[0]
+        elif not candidates:
+            raise FileNotFoundError(
+                "未找到账单数据库。请将 SQLite 文件放入 data/，或设置 FINPLOT_DATABASE。"
+            )
+        else:
+            names = ", ".join(str(item) for item in candidates)
+            raise RuntimeError(
+                f"找到多个账单数据库：{names}。请设置 FINPLOT_DATABASE 指定要使用的文件。"
+            )
+    path = path.resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"账单数据库不存在：{path}")
+    return path
+
+
+DEFAULT_DATABASE = PROJECT_ROOT / "data" / "ledger_2026-09-22.sqlite3"
 
 
 @contextmanager
-def connect(database: str | Path = DEFAULT_DATABASE) -> Iterator[sqlite3.Connection]:
+def connect(database: str | Path | None = None) -> Iterator[sqlite3.Connection]:
     """Open the database in SQLite read-only mode and close it reliably."""
-    path = Path(database).expanduser().resolve()
+    path = resolve_database(database)
     connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
     try:
@@ -34,17 +73,17 @@ def _nature_clause(natures: tuple[str, ...] | None) -> tuple[str, list[str]]:
     return f" AND c.nature IN ({placeholders})", list(natures)
 
 
-def dataset_metadata(database: str | Path = DEFAULT_DATABASE) -> dict[str, str]:
+def dataset_metadata(database: str | Path | None = None) -> dict[str, str]:
     with connect(database) as db:
         return {row["key"]: row["value"] for row in db.execute("SELECT key, value FROM metadata ORDER BY key")}
 
 
-def transaction_count(database: str | Path = DEFAULT_DATABASE) -> int:
+def transaction_count(database: str | Path | None = None) -> int:
     with connect(database) as db:
         return int(db.execute("SELECT COUNT(*) FROM transactions").fetchone()[0])
 
 
-def date_range(database: str | Path = DEFAULT_DATABASE) -> dict[str, str | None]:
+def date_range(database: str | Path | None = None) -> dict[str, str | None]:
     with connect(database) as db:
         row = db.execute("SELECT MIN(occurred_at) AS start, MAX(occurred_at) AS end FROM transactions").fetchone()
         return {"start": row["start"], "end": row["end"]}
@@ -53,7 +92,7 @@ def date_range(database: str | Path = DEFAULT_DATABASE) -> dict[str, str | None]
 def monthly_totals(
     month: str,
     *,
-    database: str | Path = DEFAULT_DATABASE,
+    database: str | Path | None = None,
     natures: tuple[str, ...] | None = None,
 ) -> dict[str, int]:
     """Return income, expense and balance in cents for YYYY-MM."""
@@ -74,7 +113,7 @@ def monthly_totals(
 def period_totals(
     year: str,
     *,
-    database: str | Path = DEFAULT_DATABASE,
+    database: str | Path | None = None,
     natures: tuple[str, ...] | None = None,
 ) -> dict[str, int]:
     """Return totals for a calendar year, still aggregated in integer cents."""
@@ -96,7 +135,7 @@ def category_totals(
     month: str,
     direction: str,
     *,
-    database: str | Path = DEFAULT_DATABASE,
+    database: str | Path | None = None,
     natures: tuple[str, ...] | None = None,
 ) -> list[dict[str, int | str]]:
     clause, args = _nature_clause(natures)
@@ -118,7 +157,7 @@ def recent_transactions(
     month: str | None = None,
     *,
     limit: int = 20,
-    database: str | Path = DEFAULT_DATABASE,
+    database: str | Path | None = None,
 ) -> list[dict]:
     if limit < 1 or limit > 200:
         raise ValueError("limit must be between 1 and 200")
