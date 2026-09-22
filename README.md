@@ -52,3 +52,15 @@ python3 app/server.py
 ```
 
 访问 http://127.0.0.1:8765 ，同一 Tailscale 网络可访问 http://100.88.185.111:8765 。当前支持真实总览、收支分析、分类明细、全部交易与投资记录。Mac 需保持开机且服务运行。
+
+## GitHub
+
+```bash
+git clone git@github.com:xusz12/Finplot2.git
+cd Finplot2
+python3 app/server.py
+```
+
+数据库工作副本不会随仓库分发。要在其他机器使用，需要将本地账本放到 `data/ledger_2026-09-22.sqlite3`；该文件已被 `.gitignore` 排除。
+
+当前版本：`v0.1.0`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
