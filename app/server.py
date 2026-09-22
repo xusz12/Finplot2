@@ -1,48 +1,23 @@
-from __future__ import annotations
-
-import json
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
-
-from ledger import category_totals, monthly_totals, period_totals, recent_transactions
-
+import json
+from ledger import connect
 ROOT = Path(__file__).resolve().parent
-
-
-class Handler(SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=str(ROOT), **kwargs)
-
+class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        parsed = urlparse(self.path)
-        if parsed.path == "/api/overview":
-            query = parse_qs(parsed.query)
-            month = query.get("month", ["2026-09"])[0]
-            natures = tuple(query.get("nature", [])) or None
-            period = query.get("period", ["month"])[0]
-            year = month[:4]
-            direction = query.get("direction", ["支出"])[0]
-            payload = {
-                "month": month,
-                "period": period,
-                "totals": period_totals(year, natures=natures) if period == "year" else monthly_totals(month, natures=natures),
-                "categories": category_totals(month, direction, natures=natures)[:8],
-                "recent": recent_transactions(month, limit=10),
-            }
-            body = json.dumps(payload, ensure_ascii=False).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-            return
-        if parsed.path == "/":
-            self.path = "/index.html"
-        return super().do_GET()
-
-
-if __name__ == "__main__":
-    port = 8765
-    print(f"Finplot listening on http://0.0.0.0:{port}")
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+        path = self.path.split('?')[0]
+        if path == '/api/ledger':
+            with connect() as db:
+                rows = [dict(r) for r in db.execute('''SELECT t.id,t.occurred_at,t.direction,t.amount_cents,c.id category_id,c.name category,g.name category_group,c.nature,t.note FROM transactions t JOIN categories c ON c.id=t.category_id JOIN category_groups g ON g.id=c.group_id ORDER BY t.occurred_at DESC,t.id DESC''')]
+            body=json.dumps(rows,ensure_ascii=False).encode(); mime='application/json'
+        elif path in ('/', '/index.html','/app.js'):
+            body=(ROOT / ('index.html' if path=='/' else path[1:])).read_bytes(); mime='application/javascript' if path.endswith('.js') else 'text/html'
+        else:
+            self.send_error(404); return
+        self.send_response(200)
+        self.send_header('Content-Type',mime+'; charset=utf-8')
+        self.send_header('Cache-Control','no-store')
+        self.send_header('Content-Length',str(len(body)))
+        self.end_headers(); self.wfile.write(body)
+if __name__=='__main__':
+    ThreadingHTTPServer(('0.0.0.0',8765),Handler).serve_forever()
