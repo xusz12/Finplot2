@@ -1,6 +1,60 @@
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let records=[],page='overview',period='month',direction='支出',category=null;
+let records=[],page='overview',period='month',direction='支出',category=null,categoryDirection=null;
 let selectedDay=null;
+// Only scope preferences are persisted; ledger records never enter storage.
+const scopeNatures=['日常','投资','往来','调整'];
+const scopePages=['overview','analysis','calendar'];
+const scopeStorageKey='finplot.page-scopes.v1';
+let pageScopes=Object.fromEntries(scopePages.map(key=>[key,['日常']]));
+try{
+  const saved=JSON.parse(localStorage.getItem(scopeStorageKey)||'{}');
+  for(const key of scopePages){
+    const value=saved?.[key];
+    if(value===null)pageScopes[key]=null;
+    else if(Array.isArray(value)&&value.every(n=>scopeNatures.includes(n)))
+      pageScopes[key]=scopeNatures.filter(n=>value.includes(n));
+  }
+}catch{/* Disabled storage or old preferences must not prevent ledger loading. */}
+function activeScope(){return page==='invest'?['投资']:page==='transactions'?null:pageScopes[page];}
+function matchesScope(record){const scope=activeScope();return scope===null||scope.includes(record.nature);}
+function scopeLabel(){const scope=activeScope();return scope===null?'全部':scope.join('、')||'未选择性质';}
+function closeScopePanel(focus=false){
+  $('#scope-panel').hidden=true;$('#scope-trigger').setAttribute('aria-expanded','false');
+  if(focus)$('#scope-trigger').focus();
+}
+function renderScope(){
+  $('#scope-picker').hidden=!scopePages.includes(page);
+  $('#scope-trigger').textContent=`范围：${scopeLabel()}`;
+  const scope=activeScope();
+  document.querySelectorAll('[data-scope]').forEach(input=>{
+    input.checked=input.dataset.scope==='all'?scope===null:scope?.includes(input.dataset.scope)||false;
+  });
+}
+$('#scope-trigger').addEventListener('click',()=>{
+  const opening=$('#scope-panel').hidden;
+  closeDatePanel(false);closeScopePanel();
+  if(opening){$('#scope-panel').hidden=false;$('#scope-trigger').setAttribute('aria-expanded','true');$('#scope-panel input:checked, #scope-panel input').focus();}
+});
+$('#scope-panel').addEventListener('change',e=>{
+  const input=e.target;if(!input.matches('[data-scope]'))return;
+  if(input.dataset.scope==='all')pageScopes[page]=null;
+  else{
+    const next=new Set(pageScopes[page]||[]);
+    if(input.checked)next.add(input.dataset.scope);else next.delete(input.dataset.scope);
+    pageScopes[page]=scopeNatures.filter(n=>next.has(n));
+  }
+  try{localStorage.setItem(scopeStorageKey,JSON.stringify(pageScopes));}catch{}
+  category=null;render();
+});
+$('#scope-picker').addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&!$('#scope-panel').hidden){e.preventDefault();closeScopePanel(true);}
+});
+$('#scope-picker').addEventListener('focusout',e=>{
+  if(e.relatedTarget&&!$('#scope-picker').contains(e.relatedTarget))closeScopePanel();
+});
+document.addEventListener('click',e=>{
+  if(!e.composedPath().includes($('#scope-picker')))closeScopePanel();
+});
 const localMonth=()=>{const now=new Date();return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`};
 let selectedMonth=localMonth(),browseYear=Number(selectedMonth.slice(0,4)),dateBounds=null;
 function updateDateBounds(){
@@ -21,7 +75,7 @@ const groupColors={'生活支出':'#3978b8','出行用车':'#168a9a','家庭支�
 const categoryIcon=r=>`<svg class="f-category-icon" style="color:${groupColors[r.category_group]||'#697586'}" viewBox="0 0 24 24" focusable="false">${iconPaths[categoryIcons[r.category]||groupIcons[r.category_group]||'more']}</svg>`;
 const legend=(directions=['收入','支出'])=>`<div class="f-legend" aria-label="图例">${directions.map(d=>`<span><i class="f-swatch ${directionClass(d)}" aria-hidden="true"></i>${d}</span>`).join('')}</div>`;
 const sum=rs=>rs.reduce((a,r)=>a+r.amount_cents,0), total=(rs,d)=>sum(rs.filter(r=>r.direction===d));
-function selection(){let prefix=selectedMonth.slice(0,period==='year'?4:7);return records.filter(r=>r.occurred_at.startsWith(prefix)&&(page==='invest'?r.nature==='投资':r.nature==='日常'));}
+function selection(){let prefix=selectedMonth.slice(0,period==='year'?4:7);return records.filter(r=>r.occurred_at.startsWith(prefix)&&matchesScope(r));}
 // Use the date as recorded, just as existing monthly summaries do. Do not parse
 // naive ledger timestamps as UTC or apply an unconfirmed timezone conversion.
 function calendarDays(rs){
@@ -91,12 +145,12 @@ document.addEventListener('keydown',e=>{
 });
 function table(rs){return rs.length?`<table class="f-table"><thead><tr><th>交易 / 分类</th><th>日期</th><th>金额 / 元</th></tr></thead><tbody>${rs.map(r=>`<tr><td><div class="f-merchant"><span class="f-merchanticon" aria-hidden="true">${categoryIcon(r)}</span><span>${esc(r.category)}<div class="f-sub">${esc(r.note||r.category_group)}</div></span></div></td><td>${esc(displayDate(r.occurred_at))}</td><td class="${directionClass(r.direction)}">${r.direction==='收入'?'+':'−'}${money(r.amount_cents)}</td></tr>`).join('')}</tbody></table>`:'<p class="f-sub">此范围暂无交易。</p>';}
 function groups(rs,dir=direction){const m=new Map();rs.filter(r=>r.direction===dir).forEach(r=>{let x=m.get(r.category_id)||{id:r.category_id,name:r.category,value:0};x.value+=r.amount_cents;m.set(r.category_id,x)});return [...m.values()].sort((a,b)=>b.value-a.value);}
-function ranks(rs,dir=direction){let g=groups(rs,dir),t=total(rs,dir);return g.length?(page==='overview'?g.slice(0,5):g).map(r=>`<div class="f-rank"><button data-category="${r.id}"><div class="f-rankline"><span>${esc(r.name)}</span><b>${money(r.value)} · ${(r.value/t*100).toFixed(1)+'%'}</b></div><div class="f-track"><div class="f-fill ${directionClass(dir)}" style="width:${r.value/t*100}%"></div></div></button></div>`).join(''):'<p class="f-sub">此范围暂无记录。</p>';}
+function ranks(rs,dir=direction){let g=groups(rs,dir),t=total(rs,dir);return g.length?(page==='overview'?g.slice(0,5):g).map(r=>`<div class="f-rank"><button data-category="${r.id}" data-category-direction="${dir}"><div class="f-rankline"><span>${esc(r.name)}</span><b>${money(r.value)} · ${(r.value/t*100).toFixed(1)+'%'}</b></div><div class="f-track"><div class="f-fill ${directionClass(dir)}" style="width:${r.value/t*100}%"></div></div></button></div>`).join(''):'<p class="f-sub">此范围暂无记录。</p>';}
 function chartWrap(svg, points){
   return `<div class="f-chart-wrap" data-chart data-points='${esc(JSON.stringify(points))}'><div class="f-chart-tooltip" role="status" aria-live="polite" hidden></div>${svg}</div>`;
 }
 function trend(rs){
-  const year=selectedMonth.slice(0,4), base=records.filter(r=>r.occurred_at.startsWith(year)&&(page==='invest'?r.nature==='投资':r.nature==='日常'));
+  const year=selectedMonth.slice(0,4), base=records.filter(r=>r.occurred_at.startsWith(year)&&matchesScope(r));
   const vals=Array.from({length:12},(_,i)=>{const r=base.filter(r=>Number(r.occurred_at.slice(5,7))===i+1);return [total(r,'收入'),total(r,'支出')]});
   const max=Math.max(...vals.flat(),1), points=vals.map((v,i)=>({x:i*50+20,label:`${i+1}月`,income:v[0],expense:v[1]}));
   const marks=vals.map((v,i)=>`<rect class="chart-hit" data-index="${i}" x="${i*50}" y="0" width="50" height="220" fill="transparent"/>${v.map((n,j)=>`<rect class="chart-mark" data-index="${i}" x="${i*50+8+j*15}" y="${210-n/max*175}" width="12" height="${n/max*175}" rx="3" fill="${j?'url(#expense-stripes)':'var(--f-income)'}"><title>${i+1}月${j?'支出':'收入'} ${money(n)}</title></rect>`).join('')}<text x="${i*50+20}" y="235" text-anchor="middle">${i+1}月</text>`).join('');
@@ -104,7 +158,7 @@ function trend(rs){
   return chartWrap(svg, points);
 }
 function balanceChart(rs){
-  const year=selectedMonth.slice(0,4), base=records.filter(r=>r.occurred_at.startsWith(year)&&r.nature==='日常');
+  const year=selectedMonth.slice(0,4), base=records.filter(r=>r.occurred_at.startsWith(year)&&matchesScope(r));
   const vals=Array.from({length:12},(_,i)=>{const r=base.filter(r=>Number(r.occurred_at.slice(5,7))===i+1);return total(r,'收入')-total(r,'支出')});
   const max=Math.max(...vals.map(Math.abs),1), zero=72, points=vals.map((v,i)=>({x:i*50+20,label:`${i+1}月`,value:v}));
   const svg=`<svg class="f-chart f-balance-chart" viewBox="0 0 600 130" role="img" aria-label="${year}年月度结余，单位元"><line x1="0" y1="${zero}" x2="600" y2="${zero}" stroke="var(--f-line)"/>${vals.map((v,i)=>{const h=Math.abs(v)/max*52;return `<rect class="chart-hit" data-index="${i}" x="${i*50}" y="0" width="50" height="120" fill="transparent"/><rect class="chart-mark" data-index="${i}" x="${i*50+13}" y="${v>=0?zero-h:zero}" width="14" height="${h}" rx="4" fill="${v>=0?'var(--f-income)':'var(--f-expense)'}"/>`}).join('')}</svg>`;
@@ -119,8 +173,8 @@ function investmentTrend(rs){
   const maxNet=Math.max(...vals.map(v=>Math.abs(v.net)),1),zero=190, svg=`<svg class="f-chart" viewBox="0 0 600 235" role="img" aria-label="${year}年投资累计收益与月度收支差额，单位元"><defs><linearGradient id="investment-line-shadow" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--f-blue)" stop-opacity=".20"/><stop offset="1" stop-color="var(--f-blue)" stop-opacity="0"/></linearGradient><pattern id="investment-bars" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="var(--f-expense)"/><path d="M-2 2L2-2M0 8L8 0M6 10L10 6" stroke="var(--f-panel)" stroke-width="1.5"/></pattern></defs><text x="0" y="15">${money(max)}</text><line x1="0" y1="${zero}" x2="600" y2="${zero}" stroke="var(--f-line)"/><path d="${path} L ${points[points.length-1].x} ${zero} L 20 ${zero} Z" fill="url(#investment-line-shadow)" opacity=".55"/><path class="investment-line" d="${path}" fill="none" stroke="var(--f-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>${points.map((p,i)=>{const h=Math.abs(vals[i].net)/maxNet*60;return `<rect class="chart-hit" data-index="${i}" x="${i*50}" y="0" width="50" height="220" fill="transparent"/><rect class="chart-mark" data-index="${i}" x="${p.x-6}" y="${zero-h}" width="12" height="${h}" rx="3" fill="${p.net>0?'var(--f-income)':'url(#investment-bars)'}"/><circle class="chart-point" data-index="${i}" cx="${p.x}" cy="${y(p.value)}" r="4.5" fill="var(--f-blue)"/>`}).join('')}${points.map(p=>`<text x="${p.x}" y="220" text-anchor="middle">${p.label}</text>`).join('')}<line class="chart-guide" x1="20" y1="18" x2="20" y2="205" stroke="var(--f-blue)" stroke-dasharray="3 4"/></svg>`;
   return chartWrap(svg,points);
 }
-function render(){renderTime();const rs=selection(),inc=total(rs,'收入'),out=total(rs,'支出');const names={overview:'财务总览',analysis:'收支分析',invest:'投资记录',transactions:'全部交易',calendar:'收支日历'};$('#crumb').textContent=names[page];$('#title').textContent={overview:'让财务，清晰一点。',analysis:'每一笔，都有迹可循。',invest:'看清已记录的投资收支。',transactions:'每一笔，都在这里。',calendar:'收支，落在每一天。'}[page];$('#subtitle').textContent=`${selectedMonth.slice(0,period==='year'?4:7)} · ${page==='invest'?'投资':'日常'} · ${rs.length} 笔 · 账本截至 ${records[0]?.occurred_at.slice(0,10)||'暂无数据'}`;document.querySelectorAll('[data-page]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.page===page));document.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.period===period));if(page==='calendar'){$('#content').innerHTML=renderCalendar(rs);return;}const stats=`<div class="f-stats">${[['收支差额',inc-out],['收入',inc],['支出',out]].map(([name,v])=>`<div class="f-stat"><div class="f-label">${name}${name==='收支差额'?`<span class="f-balance-state ${v>0?'f-income':v<0?'f-expense':''}">${rs.length?(v>0?'盈余':v<0?'超支':'收支平衡'):'暂无记录'}</span>`:''}</div><div class="f-num ${name==='收支差额'?(v>0?'f-income':v<0?'f-expense':''):directionClass(name)}">${money(v)}</div></div>`).join('')}</div>`;const structure=(dir=direction,showSwitcher=page==='overview')=>`<section class="f-panel"><div class="f-panelhead"><h2>${dir}构成</h2>${showSwitcher?`<div class="f-segment"><button data-direction="支出" aria-pressed="${dir==='支出'}">支出</button><button data-direction="收入" aria-pressed="${dir==='收入'}">收入</button></div>`:''}</div>${legend([dir])}${ranks(rs,dir)}</section>`;const details=category!==null?`<section class="f-panel f-bottom"><div class="f-panelhead"><h2>分类明细 · ${esc(rs.find(r=>r.category_id===category)?.category||'')}</h2><button data-close>收起</button></div>${table(rs.filter(r=>r.category_id===category&&r.direction===direction))}</section>`:'';$('#content').innerHTML=stats+(page==='transactions'?`<section class="f-panel">${table(rs)}</section>`:page==='overview'?`<div class="f-grid"><section class="f-panel"><div class="f-panelhead"><h2>${selectedMonth.slice(0,4)}年收支趋势</h2>${legend()}</div>${trend(rs)}${balanceChart(rs)}</section>${structure()}</div>${details}<section class="f-panel f-bottom"><div class="f-panelhead"><h2>最近收支</h2><button data-page="transactions">查看全部</button></div>${table(rs.slice(0,8))}</section>`:page==='analysis'?`<div class="f-grid f-analysis-grid">${structure('支出',false)}${structure('收入',false)}</div>${details}`:`<section class="f-panel"><div class="f-panelhead"><h2>${selectedMonth.slice(0,4)}年投资收支趋势</h2>${legend()}</div>${investmentTrend(rs)}</section><section class="f-panel f-bottom"><h2>投资交易记录</h2>${table(rs)}</section>`);}
-document.addEventListener('click',e=>{let b=e.target instanceof Element?e.target.closest('button'):null;if(!b)return;if(b.dataset.day){selectCalendarDay(b.dataset.day);return;}if(b.dataset.page){closeDatePanel(false);if(b.dataset.page==='calendar')period='month';page=b.dataset.page;category=null;}else if(b.dataset.period){if(page==='calendar')return;closeDatePanel(false);period=b.dataset.period;category=null;}else if(b.dataset.direction){direction=b.dataset.direction;category=null;}else if(b.dataset.category){category=Number(b.dataset.category);}else if(b.hasAttribute('data-close'))category=null;else return;render();});
+function render(){renderTime();renderScope();const rs=selection(),inc=total(rs,'收入'),out=total(rs,'支出');const names={overview:'财务总览',analysis:'收支分析',invest:'投资记录',transactions:'全部交易',calendar:'收支日历'};$('#crumb').textContent=names[page];$('#title').textContent={overview:'让财务，清晰一点。',analysis:'每一笔，都有迹可循。',invest:'看清已记录的投资收支。',transactions:'每一笔，都在这里。',calendar:'收支，落在每一天。'}[page];$('#subtitle').textContent=`${selectedMonth.slice(0,period==='year'?4:7)} · ${scopeLabel()} · ${rs.length} 笔 · 账本截至 ${records[0]?.occurred_at.slice(0,10)||'暂无数据'}`;document.querySelectorAll('[data-page]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.page===page));document.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.period===period));if(page==='calendar'){$('#content').innerHTML=renderCalendar(rs);return;}const stats=`<div class="f-stats">${[['收支差额',inc-out],['收入',inc],['支出',out]].map(([name,v])=>`<div class="f-stat"><div class="f-label">${name}${name==='收支差额'?`<span class="f-balance-state ${v>0?'f-income':v<0?'f-expense':''}">${rs.length?(v>0?'盈余':v<0?'超支':'收支平衡'):'暂无记录'}</span>`:''}</div><div class="f-num ${name==='收支差额'?(v>0?'f-income':v<0?'f-expense':''):directionClass(name)}">${money(v)}</div></div>`).join('')}</div>`;const structure=(dir=direction,showSwitcher=page==='overview')=>`<section class="f-panel"><div class="f-panelhead"><h2>${dir}构成</h2>${showSwitcher?`<div class="f-segment"><button data-direction="支出" aria-pressed="${dir==='支出'}">支出</button><button data-direction="收入" aria-pressed="${dir==='收入'}">收入</button></div>`:''}</div>${legend([dir])}${ranks(rs,dir)}</section>`;const details=category!==null?`<section class="f-panel f-bottom"><div class="f-panelhead"><h2>分类明细 · ${esc(rs.find(r=>r.category_id===category)?.category||'')}</h2><button data-close>收起</button></div>${table(rs.filter(r=>r.category_id===category&&r.direction===categoryDirection))}</section>`:'';$('#content').innerHTML=(page==='transactions'?'':stats)+(page==='transactions'?`<section class="f-panel">${table(rs)}</section>`:page==='overview'?`<div class="f-grid"><section class="f-panel"><div class="f-panelhead"><h2>${selectedMonth.slice(0,4)}年收支趋势</h2>${legend()}</div>${trend(rs)}${balanceChart(rs)}</section>${structure()}</div>${details}<section class="f-panel f-bottom"><div class="f-panelhead"><h2>最近收支</h2><button data-page="transactions">查看全部</button></div>${table(rs.slice(0,8))}</section>`:page==='analysis'?`<div class="f-grid f-analysis-grid">${structure('支出',false)}${structure('收入',false)}</div>${details}`:`<section class="f-panel"><div class="f-panelhead"><h2>${selectedMonth.slice(0,4)}年投资收支趋势</h2>${legend()}</div>${investmentTrend(rs)}</section><section class="f-panel f-bottom"><h2>投资交易记录</h2>${table(rs)}</section>`);}
+document.addEventListener('click',e=>{let b=e.target instanceof Element?e.target.closest('button'):null;if(!b)return;if(b.dataset.day){selectCalendarDay(b.dataset.day);return;}if(b.dataset.page){closeScopePanel();closeDatePanel(false);if(b.dataset.page==='calendar')period='month';page=b.dataset.page;category=null;}else if(b.dataset.period){if(page==='calendar')return;closeDatePanel(false);period=b.dataset.period;category=null;}else if(b.dataset.direction){direction=b.dataset.direction;category=null;}else if(b.dataset.category){category=Number(b.dataset.category);categoryDirection=b.dataset.categoryDirection;}else if(b.hasAttribute('data-close'))category=null;else return;render();});
 
 fetch('/api/ledger').then(r=>{if(!r.ok)throw Error();return r.json()}).then(rs=>{records=rs;updateDateBounds();selectedMonth=dateBounds?.max||localMonth();render()}).catch(()=>{$('#content').textContent='账本读取失败，请刷新重试。'});
 
@@ -161,6 +215,7 @@ function renderDatePanel(focusValue){
   if(focusValue!==undefined)($('#date-panel [data-date="'+focusValue+'"]:not(:disabled)')||$('#date-panel [aria-pressed=true]:not(:disabled)')||$('#date-panel [data-date]:not(:disabled)')).focus();
 }
 $('#date-trigger').addEventListener('click',()=>{
+  closeScopePanel();
   if(!$('#date-panel').hidden){closeDatePanel();return;}
   browseYear=Number(selectedMonth.slice(0,4));$('#date-panel').hidden=false;
   $('#date-trigger').setAttribute('aria-expanded','true');renderDatePanel(null);

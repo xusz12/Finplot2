@@ -107,9 +107,21 @@
 #folio-finance .f-calendar-amount.f-expense.heat-2{background:#98c9ac;color:#152b1d}
 #folio-finance .f-calendar-amount.f-expense.heat-3{background:#347b51;color:#ffffff}
 #folio-finance .f-calendar-amount.f-expense.heat-4{background:#205c3b;color:#ffffff}
+
+#folio-finance .f-controls{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;max-width:100%;min-width:0}
+#folio-finance .f-scope{position:relative;max-width:100%}
+#folio-finance #scope-trigger{border:1px solid var(--f-line);border-radius:10px;background:var(--f-panel);padding:10px 12px;min-height:44px;font-size:13px;max-width:100%;white-space:normal;text-align:left;line-height:1.5}
+#folio-finance #scope-trigger[aria-expanded=true]{color:var(--f-blue);background:var(--f-soft)}
+#folio-finance .f-scope-panel{position:absolute;top:calc(100% + 8px);right:0;width:220px;padding:12px;background:var(--f-panel);border:1px solid var(--f-line);border-radius:14px;box-shadow:0 6px 22px #0000000c;z-index:20}
+#folio-finance .f-scope-panel h2{font-size:13px;font-weight:500;margin:4px 10px 8px;color:var(--f-muted)}
+#folio-finance .f-scope-panel label{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 10px;border-radius:8px;cursor:pointer;font-size:14px}
+#folio-finance .f-scope-panel label:hover{background:var(--f-bg)}
+#folio-finance .f-scope-panel input{margin:0;width:16px;height:16px;accent-color:var(--f-blue);flex-shrink:0}
+#folio-finance .f-scope-panel hr{border:0;border-top:1px solid var(--f-line);margin:6px 0}
+@media(max-width:560px){#folio-finance .f-controls{width:100%;justify-content:flex-start}#folio-finance .f-scope-panel{left:0;right:auto;max-width:calc(100vw - 32px)}}
 </style>
-<div id="folio-finance"><div class="f-shell"><aside class="f-sidebar"><div class="f-logo">Finplot</div><div class="f-navlabel">个人财务</div><nav class="f-nav"><button data-page="overview">财务总览</button><button data-page="analysis">收支分析</button><button data-page="calendar">收支日历</button><button data-page="invest">投资记录</button><button data-page="transactions">全部交易</button></nav></aside><main class="f-main"><div class="f-top"><span id="crumb">财务总览</span></div><div class="f-heading"><div><h1 id="title">让财务，清晰一点。</h1><div id="subtitle" class="f-sub"></div></div><div class="f-time" id="time-picker">
+<div id="folio-finance"><div class="f-shell"><aside class="f-sidebar"><div class="f-logo">Finplot</div><div class="f-navlabel">个人财务</div><nav class="f-nav"><button data-page="overview">财务总览</button><button data-page="analysis">收支分析</button><button data-page="calendar">收支日历</button><button data-page="invest">投资记录</button><button data-page="transactions">全部交易</button></nav></aside><main class="f-main"><div class="f-top"><span id="crumb">财务总览</span></div><div class="f-heading"><div><h1 id="title">让财务，清晰一点。</h1><div id="subtitle" class="f-sub"></div></div><div class="f-controls"><div class="f-scope" id="scope-picker"><button id="scope-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="scope-panel">范围：日常</button><div id="scope-panel" class="f-scope-panel" role="dialog" aria-labelledby="scope-title" hidden><h2 id="scope-title">统计范围</h2><label><input type="radio" name="scope-all" data-scope="all">全部</label><hr><div role="group" aria-label="按性质选择"><label><input type="checkbox" data-scope="日常">日常</label><label><input type="checkbox" data-scope="投资">投资</label><label><input type="checkbox" data-scope="往来">往来</label><label><input type="checkbox" data-scope="调整">调整</label></div></div></div><div class="f-time" id="time-picker">
 <div class="f-segment" role="group" aria-label="统计周期"><button data-period="month" aria-pressed="true">月度</button><button data-period="year" aria-pressed="false">年度</button></div>
 <div class="f-time-nav"><button class="f-time-arrow" data-step="-1" aria-label="上个月">‹</button><button id="date-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="date-panel"></button><button class="f-time-arrow" data-step="1" aria-label="下个月">›</button></div>
 <div id="date-panel" class="f-date-panel" role="dialog" aria-label="选择月份" hidden></div>
-</div></div><div id="content" aria-live="polite" style="margin-top:18px">正在读取账本…</div><footer class="f-footer">Finplot · 本地只读账本</footer></main></div></div><script src="/app.js"></script></html>
+</div></div></div><div id="content" aria-live="polite" style="margin-top:18px">正在读取账本…</div><footer class="f-footer">Finplot · 本地只读账本</footer></main></div></div><script src="/app.js"></script></html>
