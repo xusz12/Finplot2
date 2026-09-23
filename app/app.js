@@ -214,13 +214,235 @@ function investmentTrend(rs){
   const maxNet=Math.max(...vals.map(v=>Math.abs(v.net)),1),zero=190, svg=`<svg class="f-chart" viewBox="0 0 600 235" role="group" aria-label="${year}年投资累计盈亏与月度盈亏，单位元"><defs><linearGradient id="investment-line-shadow" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--f-blue)" stop-opacity=".20"/><stop offset="1" stop-color="var(--f-blue)" stop-opacity="0"/></linearGradient><pattern id="investment-bars" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="var(--f-expense)"/><path d="M-2 2L2-2M0 8L8 0M6 10L10 6" stroke="var(--f-panel)" stroke-width="1.5"/></pattern></defs><text x="0" y="15">${money(max)}</text><line x1="0" y1="${zero}" x2="600" y2="${zero}" stroke="var(--f-line)"/><path d="${path} L ${points[points.length-1].x} ${zero} L 20 ${zero} Z" fill="url(#investment-line-shadow)" opacity=".55"/><path class="investment-line" d="${path}" fill="none" stroke="var(--f-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>${points.map((p,i)=>{const h=Math.abs(vals[i].net)/maxNet*60;return `<rect class="chart-mark" data-index="${i}" x="${p.x-6}" y="${zero-h}" width="12" height="${h}" rx="3" fill="${p.net>0?'var(--f-income)':'url(#investment-bars)'}"/><circle class="chart-point" data-index="${i}" cx="${p.x}" cy="${y(p.value)}" r="4.5" fill="var(--f-blue)"/>`}).join('')}${points.map(p=>`<text x="${p.x}" y="220" text-anchor="middle">${p.label}</text>`).join('')}<line class="${guideClass}" x1="${guideX}" y1="18" x2="${guideX}" y2="205" stroke="var(--f-blue)" stroke-dasharray="3 4"/>${chartMonthTargets(235)}</svg>`;
   return chartWrap(svg,points,true);
 }
-function render(){renderTime();renderScope();const rs=selection(),inc=total(rs,'收入'),out=total(rs,'支出');const names={overview:'财务总览',analysis:'收支分析',invest:'投资记录',transactions:'全部交易',calendar:'收支日历'};$('#crumb').textContent=names[page];$('#title').textContent={overview:'让财务，清晰一点。',analysis:'每一笔，都有迹可循。',invest:'看清投资盈亏。',transactions:'每一笔，都在这里。',calendar:'收支，落在每一天。'}[page];$('#subtitle').textContent=`${selectedMonth.slice(0,period==='year'?4:7)} · ${scopeLabel()} · ${rs.length} 笔 · 账本截至 ${records[0]?.occurred_at.slice(0,10)||'暂无数据'}`;document.querySelectorAll('[data-page]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.page===page));document.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.period===period));if(page==='calendar'){$('#content').innerHTML=renderCalendar(rs);return;}const investmentPage=page==='invest',stats=investmentPage?`<div class="f-stats">${[['投资盈亏',inc-out],['盈利',inc],['亏损',out]].map(([name,v])=>`<div class="f-stat"><div class="f-label">${name}${name==='投资盈亏'?`<span class="f-balance-state ${v>0?'f-income':v<0?'f-expense':''}">${rs.length?(v>0?'盈利':v<0?'亏损':'盈亏平衡'):'暂无记录'}</span>`:''}</div><div class="f-num ${name==='投资盈亏'?(v>0?'f-income':v<0?'f-expense':''):name==='盈利'?'f-income':'f-expense'}">${money(v)}</div></div>`).join('')}</div>`:`<div class="f-stats">${[['收支差额',inc-out],['收入',inc],['支出',out]].map(([name,v])=>`<div class="f-stat"><div class="f-label">${name}${name==='收支差额'?`<span class="f-balance-state ${v>0?'f-income':v<0?'f-expense':''}">${rs.length?(v>0?'盈余':v<0?'超支':'收支平衡'):'暂无记录'}</span>`:''}</div><div class="f-num ${name==='收支差额'?(v>0?'f-income':v<0?'f-expense':''):directionClass(name)}">${money(v)}</div></div>`).join('')}</div>`;const structure=(dir=direction,showSwitcher=page==='overview')=>`<section class="f-panel"><div class="f-panelhead"><h2>${dir}构成</h2>${showSwitcher?`<div class="f-segment"><button data-direction="支出" aria-pressed="${dir==='支出'}">支出</button><button data-direction="收入" aria-pressed="${dir==='收入'}">收入</button></div>`:''}</div>${legend([dir])}${ranks(rs,dir)}</section>`;const details=category!==null?`<section class="f-panel f-bottom"><div class="f-panelhead"><h2>分类明细 · ${esc(rs.find(r=>r.category_id===category)?.category||'')}</h2><button data-close>收起</button></div>${table(rs.filter(r=>r.category_id===category&&r.direction===categoryDirection))}</section>`:'';$('#content').innerHTML=(page==='transactions'?'':stats)+(page==='transactions'?`<section class="f-panel">${table(rs)}</section>`:page==='overview'?`<div class="f-grid"><section class="f-panel"><div class="f-panelhead"><h2>${selectedMonth.slice(0,4)}年收支趋势</h2>${legend()}</div>${trend(rs)}${balanceChart(rs)}</section>${structure()}</div>${details}<section class="f-panel f-bottom"><div class="f-panelhead"><h2>最近收支</h2><button data-page="transactions">查看全部</button></div>${table(rs.slice(0,8))}</section>`:page==='analysis'?`<div class="f-grid f-analysis-grid">${structure('支出',false)}${structure('收入',false)}</div>${details}`:`<section class="f-panel"><div class="f-panelhead"><h2>${selectedMonth.slice(0,4)}年投资盈亏趋势</h2>${legend(['收入','支出'],{收入:'盈利',支出:'亏损'})}</div>${investmentTrend(rs)}</section><section class="f-panel f-bottom"><h2>投资记录</h2>${table(rs,true)}</section>`);}
+// Release notes mirror CHANGELOG.md; tests/settings.cjs checks they stay in sync.
+const changelog=[
+  {
+    "version": "v0.1.7",
+    "date": "2026-09-23",
+    "items": [
+      {
+        "text": "产品名称下方显示当前版本号 v0.1.7。"
+      },
+      {
+        "text": "侧边栏固定在视口中，页面上下滚动时保持导航与设置入口可见；窄屏端导航固定在顶部。"
+      },
+      {
+        "text": "在侧边栏左下角新增设置入口，首个子页面为更新日志，展示各版本的主要变化。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.6",
+    "date": "2026-09-23",
+    "items": [
+      {
+        "text": "总览与投资图表支持点击月份切换到月度数据，再次点击当前月份返回年度数据；主图与副图的月份参考虚线实时同步。"
+      },
+      {
+        "text": "保留桌面端柱形悬浮预览，移动端点击图表后同步日期选择状态，并将选中态边框调整为轻量描边。"
+      },
+      {
+        "text": "移动端顶栏保持单行布局，导航内容过多时支持横向滚动，避免元素向下堆叠。"
+      },
+      {
+        "text": "更新投资页摘要卡片、图表、状态、明细和空状态文案，统一使用盈利、亏损与盈亏平衡等投资语义。"
+      },
+      {
+        "text": "增加图表月份选择回归测试，覆盖桌面端、移动端和窄屏布局。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.5",
+    "date": "2026-09-23",
+    "items": [
+      {
+        "text": "新增月度收支日历，支持每日收支、当天交易明细、键盘日期导航和移动端布局。"
+      },
+      {
+        "text": "总览、收支分析、收支日历新增统计范围悬浮面板：全部与日常、投资、往来、调整互斥，四种性质支持自由多选，不增加“自定义”入口。"
+      },
+      {
+        "text": "各页面独立记忆统计范围，刷新后恢复；指标、图表、分类、日历与明细统一使用所选范围。"
+      },
+      {
+        "text": "全部交易展示所选期间的所有性质记录，移除收入、支出与收支差额统计框；投资页保持固定投资范围。"
+      },
+      {
+        "text": "修复收入构成条形点击后分类明细被错误按支出过滤的问题，分类钻取方向与总览方向状态分离。"
+      },
+      {
+        "text": "新增范围与分类明细回归测试，覆盖组合金额、周期、独立记忆、键盘交互及 1440px／390px 布局。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.4",
+    "date": "2026-09-23",
+    "items": [
+      {
+        "text": "投资趋势改为平滑的累计收益曲线，保留月度收支差额柱形。"
+      },
+      {
+        "text": "投资盈利柱形使用收入红色，亏损柱形使用支出绿色斜纹，零值不绘制可见柱形。"
+      },
+      {
+        "text": "财务总览增加与主趋势共享月份坐标的结余柱状副图，并修正响应式对齐。"
+      },
+      {
+        "text": "所有图表的月份整格支持悬停数据浮层，默认隐藏曲线节点，悬停时显示参考线。"
+      },
+      {
+        "text": "收支分析移除本期观察和收入／支出切换器，改为收入与支出并列模块。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.3",
+    "date": "2026-09-22",
+    "items": [
+      {
+        "text": "以紧凑的月度／年度切换、中文日期入口和左右翻页替换原生月份输入框；点击日期展开月份或年份面板。"
+      },
+      {
+        "text": "支持回到本月／今年、页面间保留周期，以及键盘导航、Escape 关闭和焦点返回。"
+      },
+      {
+        "text": "按全账本首末交易日期限制时间选择；到达边界时箭头与越界日期变灰并禁用，兼容单月与空账本。"
+      },
+      {
+        "text": "趋势图标题明确标注所选年份。"
+      },
+      {
+        "text": "修复弹窗翻年意外关闭、悬停覆盖选中背景，以及返回当前周期按钮的圆角和文字居中问题。"
+      },
+      {
+        "text": "验证桌面与手机布局、真实金额汇总、跨年切换、边界状态及悬停样式。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.2",
+    "date": "2026-09-22",
+    "items": [
+      {
+        "text": "为交易明细行增加按明细分类匹配的轻量符号图标，覆盖当前启用的收支类型。"
+      },
+      {
+        "text": "对历史停用类型和未知分类使用分类组或通用符号回退，避免旧记录出现空白图标。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.1",
+    "date": "2026-09-22",
+    "items": [
+      {
+        "text": "统一指标、交易金额与图表的收支语义色：收入暖红色、支出绿色。"
+      },
+      {
+        "text": "收支差额根据正负显示盈余或超支，零差额与无记录使用中性状态。"
+      },
+      {
+        "text": "总览与投资趋势使用统一图例，收入实心、支出斜纹；分类条形图沿用相同编码，避免仅凭颜色识别。"
+      },
+      {
+        "text": "增加趋势图读屏数据摘要，放大手机端图表标签。"
+      },
+      {
+        "text": "移除隐藏金额功能、指标卡底部说明、侧栏左下角冗余描述和统计性质筛选；保留默认日常口径，投资页固定投资口径。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.0",
+    "date": "2026-09-22",
+    "items": [
+      {
+        "heading": "新增"
+      },
+      {
+        "text": "建立只读 SQLite 账本访问层，金额汇总使用整数分。"
+      },
+      {
+        "text": "接入真实交易、分类、分类性质和来源字段。"
+      },
+      {
+        "text": "实现财务总览、收支分析、分类明细、全部交易和投资记录页面。"
+      },
+      {
+        "text": "支持月份、年度、收入/支出和分类性质筛选。"
+      },
+      {
+        "text": "支持金额隐私显示、空数据、错误状态和响应式布局。"
+      },
+      {
+        "text": "提供本机及 Tailscale 网络访问入口。"
+      },
+      {
+        "text": "增加 macOS 双击启动入口 启动Finplot.command。"
+      },
+      {
+        "text": "支持通过 FINPLOT_DATABASE 或 data/ 自动发现本机账单数据库。"
+      },
+      {
+        "heading": "约束"
+      },
+      {
+        "text": "私人 SQLite 数据库保留在本地 data/，不会提交到 Git。"
+      },
+      {
+        "text": "投资页只展示数据库中的投资收支记录；数据库没有持仓、行情和账户表，因此不计算持仓市值、浮动收益或收益率。"
+      },
+      {
+        "text": "当前服务需要手动运行 python3 app/server.py，尚未配置开机自启。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.2 修订",
+    "date": "",
+    "items": [
+      {
+        "text": "将交易分类图标统一为同一套线性 SVG，统一描边、尺寸与基线，避免 Emoji 和系统字体混排造成的视觉差异。"
+      }
+    ]
+  },
+  {
+    "version": "v0.1.2 色彩修订",
+    "date": "",
+    "items": [
+      {
+        "text": "为分类图标加入按行为大类区分的色系：支出使用冷色，收入使用暖色；同一大类保持同一色相。"
+      }
+    ]
+  }
+];
+const appVersion=changelog[0].version;
+$('.f-version').textContent=appVersion;
+function renderChangelog(){return `<button class="f-back" data-page="settings">‹ 返回设置</button><section class="f-panel f-changelog">${changelog.map(entry=>`<article class="f-changelog-item"><div class="f-changelog-head"><h2>${esc(entry.version)}</h2>${entry.date?`<time class="f-changelog-date" datetime="${entry.date}">${entry.date}</time>`:''}</div>${entry.items.map(item=>item.heading?`<h3>${esc(item.heading)}</h3>`:`<ul><li>${esc(item.text)}</li></ul>`).join('')}</article>`).join('')}</section>`;}
+function renderSettings(){
+  const log=page==='changelog';
+  $('#crumb').textContent=log?'设置 / 更新日志':'设置';
+  $('#title').textContent=log?'更新日志':'设置';
+  $('#subtitle').textContent=`Finplot ${appVersion} · ${log?'每一次改进，都记录在这里。':'关于产品与版本更新'}`;
+  $('#content').innerHTML=log?renderChangelog():`<section class="f-panel f-settings-list"><button class="f-settings-row" data-page="changelog"><span><strong>更新日志</strong><small>查看版本变化与功能改进</small></span><span aria-hidden="true">›</span></button></section>`;
+}
+function render(){
+  const settings=page==='settings'||page==='changelog';
+  $('.f-controls').hidden=settings;
+  $('.f-settings').setAttribute('aria-pressed',String(settings));
+  if(settings){
+    document.querySelectorAll('.f-nav [data-page]').forEach(b=>b.setAttribute('aria-pressed','false'));
+    renderSettings();return;
+  }
+  renderTime();renderScope();const names={overview:'财务总览',analysis:'收支分析',invest:'投资记录',transactions:'全部交易',calendar:'收支日历'};const titles={overview:'让财务，清晰一点。',analysis:'每一笔，都有迹可循。',invest:'看清投资盈亏。',transactions:'每一笔，都在这里。',calendar:'收支，落在每一天。'};$('#crumb').textContent=names[page];$('#title').textContent=titles[page];$('#subtitle').textContent=`${selectedMonth.slice(0,period==='year'?4:7)} · ${scopeLabel()} · ${selection().length} 笔 · 账本截至 ${records[0]?.occurred_at.slice(0,10)||'暂无数据'}`;document.querySelectorAll('[data-page]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.page===page));document.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.period===period));const rs=selection(),inc=total(rs,'收入'),out=total(rs,'支出');if(page==='calendar'){$('#content').innerHTML=renderCalendar(rs);return;}const investmentPage=page==='invest',stats=investmentPage?`<div class="f-stats">${[['投资盈亏',inc-out],['盈利',inc],['亏损',out]].map(([name,v])=>`<div class="f-stat"><div class="f-label">${name}${name==='投资盈亏'?`<span class="f-balance-state ${v>0?'f-income':v<0?'f-expense':''}">${rs.length?(v>0?'盈利':v<0?'亏损':'盈亏平衡'):'暂无记录'}</span>`:''}</div><div class="f-num ${name==='投资盈亏'?(v>0?'f-income':v<0?'f-expense':''):name==='盈利'?'f-income':'f-expense'}">${money(v)}</div></div>`).join('')}</div>`:`<div class="f-stats">${[['收支差额',inc-out],['收入',inc],['支出',out]].map(([name,v])=>`<div class="f-stat"><div class="f-label">${name}${name==='收支差额'?`<span class="f-balance-state ${v>0?'f-income':v<0?'f-expense':''}">${rs.length?(v>0?'盈余':v<0?'超支':'收支平衡'):'暂无记录'}</span>`:''}</div><div class="f-num ${name==='收支差额'?(v>0?'f-income':v<0?'f-expense':''):directionClass(name)}">${money(v)}</div></div>`).join('')}</div>`;const structure=(dir=direction,showSwitcher=page==='overview')=>`<section class="f-panel"><div class="f-panelhead"><h2>${dir}构成</h2>${showSwitcher?`<div class="f-segment"><button data-direction="支出" aria-pressed="${dir==='支出'}">支出</button><button data-direction="收入" aria-pressed="${dir==='收入'}">收入</button></div>`:''}</div>${legend([dir])}${ranks(rs,dir)}</section>`;const details=category!==null?`<section class="f-panel f-bottom"><div class="f-panelhead"><h2>分类明细 · ${esc(rs.find(r=>r.category_id===category)?.category||'')}</h2><button data-close>收起</button></div>${table(rs.filter(r=>r.category_id===category&&r.direction===categoryDirection))}</section>`:'';$('#content').innerHTML=(page==='transactions'?'':stats)+(page==='transactions'?`<section class="f-panel">${table(rs)}</section>`:page==='overview'?`<div class="f-grid"><section class="f-panel"><div class="f-panelhead"><h2>${selectedMonth.slice(0,4)}年收支趋势</h2>${legend()}</div>${trend(rs)}${balanceChart(rs)}</section>${structure()}</div>${details}<section class="f-panel f-bottom"><div class="f-panelhead"><h2>最近收支</h2><button data-page="transactions">查看全部</button></div>${table(rs.slice(0,8))}</section>`:page==='analysis'?`<div class="f-grid f-analysis-grid">${structure('支出',false)}${structure('收入',false)}</div>${details}`:`<section class="f-panel"><div class="f-panelhead"><h2>${selectedMonth.slice(0,4)}年投资盈亏趋势</h2>${legend(['收入','支出'],{收入:'盈利',支出:'亏损'})}</div>${investmentTrend(rs)}</section><section class="f-panel f-bottom"><h2>投资记录</h2>${table(rs,true)}</section>`);}
 document.addEventListener('click',e=>{
   const chartTarget=e.target instanceof Element?e.target.closest('[data-chart] .chart-hit,[data-chart] .chart-mark,[data-chart] .chart-point'):null;
   if(chartTarget){selectChartMonth(Number(chartTarget.dataset.index));return;}
   let b=e.target instanceof Element?e.target.closest('button'):null;if(!b)return;
   if(b.dataset.day){selectCalendarDay(b.dataset.day);return;}
-  if(b.dataset.page){closeScopePanel();closeDatePanel(false);if(b.dataset.page==='calendar')period='month';page=b.dataset.page;category=null;}
+  if(b.dataset.page){closeScopePanel();closeDatePanel(false);if(b.dataset.page==='calendar')period='month';page=b.dataset.page;category=null;render();window.scrollTo(0,0);$('#title').focus({preventScroll:true});return;}
   else if(b.dataset.period){if(page==='calendar')return;closeDatePanel(false);period=b.dataset.period;category=null;}
   else if(b.dataset.direction){direction=b.dataset.direction;category=null;}
   else if(b.dataset.category){category=Number(b.dataset.category);categoryDirection=b.dataset.categoryDirection;}
