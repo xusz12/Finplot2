@@ -62,11 +62,15 @@
 #folio-finance .f-calendar-number{font-size:13px;font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;align-items:center}
 #folio-finance .f-calendar-today{font-size:10px;color:var(--f-blue);font-weight:600}
 #folio-finance .f-calendar-amounts{display:flex;flex-direction:column;gap:2px;min-width:0}
-#folio-finance .f-calendar-amount{font-size:11px;line-height:1.35;min-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-#folio-finance .f-calendar-amount.f-income{color:var(--f-income)}
-#folio-finance .f-calendar-amount.f-expense{color:var(--f-expense)}
+#folio-finance .f-calendar-amount{font-size:11px;line-height:1.35;min-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;border-radius:4px;padding:1px 3px;font-weight:500}
 #folio-finance .f-calendar-compact{display:none}
-#folio-finance .f-calendar-footnote{display:flex;justify-content:space-between;gap:12px;color:var(--f-muted);font-size:11px;margin-top:12px}
+#folio-finance .f-calendar-footnote{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;color:var(--f-muted);font-size:11px;margin-top:12px}
+#folio-finance .f-calendar-year-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+#folio-finance .f-calendar-month-cell{border:1px solid var(--f-line);border-radius:12px;padding:16px;background:var(--f-panel);text-align:left;display:grid;gap:12px;min-width:0}
+#folio-finance .f-calendar-month-cell:hover:not(:disabled){border-color:var(--f-blue)}
+#folio-finance .f-calendar-month-cell:disabled{opacity:.55;cursor:default}
+#folio-finance .f-month-name{font-size:18px;font-weight:500}
+#folio-finance .f-calendar-month-cell .f-calendar-amount{font-size:14px;padding:7px;min-height:32px}
 #folio-finance .f-calendar-detail{padding:21px}
 #folio-finance .f-calendar-detailhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding-bottom:15px;border-bottom:1px solid var(--f-line)}
 #folio-finance .f-calendar-detailhead h2{font-size:18px;margin:0;font-weight:500}
@@ -76,9 +80,35 @@
 #folio-finance .f-day-transactions{list-style:none;padding:0;margin:0}.f-day-transactions li{display:flex;gap:10px;padding:12px 0;border-top:1px solid var(--f-line)}
 #folio-finance .f-day-transaction{min-width:0;flex:1}.f-day-row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.f-day-row strong{font-size:13px;font-weight:500;overflow-wrap:anywhere}.f-day-row>span{font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}.f-day-transaction time{display:block;margin-top:2px}
 #folio-finance .f-calendar-empty{color:var(--f-muted);font-size:13px;line-height:1.7;margin:22px 0}
-@media(max-width:850px){#folio-finance .f-calendar-layout{grid-template-columns:minmax(0,1fr)}#folio-finance .f-calendar-detail{order:2}}
-@media(max-width:560px){#folio-finance .f-calendar-summary{gap:6px}.f-calendar-summary>div{padding:12px 10px}.f-calendar-summary dd{font-size:15px}.f-calendar-day,.f-calendar-padding{min-height:64px}.f-calendar-day{padding:7px 4px;gap:4px}.f-calendar-number{font-size:12px}.f-calendar-full{display:none}.f-calendar-compact{display:inline}.f-calendar-amount{font-size:10px}.f-calendar-footnote{font-size:10px}.f-calendar-detail{padding:17px}.f-calendar-detailhead h2{font-size:17px}.f-day-totals{gap:6px}}
-</style><div id="folio-finance"><div class="f-shell"><aside class="f-sidebar"><div class="f-logo">Finplot</div><div class="f-navlabel">个人财务</div><nav class="f-nav"><button data-page="overview">财务总览</button><button data-page="analysis">收支分析</button><button data-page="calendar">收支日历</button><button data-page="invest">投资记录</button><button data-page="transactions">全部交易</button></nav></aside><main class="f-main"><div class="f-top"><span id="crumb">财务总览</span></div><div class="f-heading"><div><h1 id="title">让财务，清晰一点。</h1><div id="subtitle" class="f-sub"></div></div><div class="f-time" id="time-picker">
+@media(max-width:1100px){#folio-finance .f-calendar-layout{grid-template-columns:minmax(0,1fr)}#folio-finance .f-calendar-year-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:560px){
+#folio-finance .f-nav{display:flex;flex-wrap:wrap;gap:4px}#folio-finance .f-nav button{flex:1 0 29%;padding:9px 4px;min-height:44px;font-size:12px}
+#folio-finance .f-calendar-summary{grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 14px}
+#folio-finance .f-calendar-summary>div{padding:12px}#folio-finance .f-calendar-summary>div:last-child{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between}
+#folio-finance .f-calendar-summary dd{font-size:18px}#folio-finance .f-calendar-summary dt{margin:0}
+#folio-finance .f-calendar-panel{padding:12px 6px}#folio-finance .f-calendar-panel .f-panelhead{padding:0 6px}
+#folio-finance .f-calendar-day,#folio-finance .f-calendar-padding{min-height:78px}
+#folio-finance .f-calendar-day{padding:6px 1px;gap:7px}#folio-finance .f-calendar-number{padding:0 4px;font-size:12px}
+#folio-finance .f-calendar-amount{font-size:11px;padding:2px 0;letter-spacing:-.3px;min-height:19px;text-align:center}
+#folio-finance .f-calendar-full{display:none}#folio-finance .f-calendar-compact{display:inline}
+#folio-finance .f-calendar-detail{padding:16px}#folio-finance .f-day-row{flex-wrap:wrap;gap:4px}#folio-finance .f-day-transaction .f-sub{overflow-wrap:anywhere}
+#folio-finance .f-calendar-year-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#folio-finance .f-calendar-month-cell{padding:10px;gap:8px}#folio-finance .f-calendar-month-cell .f-calendar-amount{font-size:12px;padding:6px 2px;text-align:left}
+#folio-finance .f-calendar-month-cell .f-calendar-full{display:inline}#folio-finance .f-calendar-month-cell .f-calendar-compact{display:none}
+#folio-finance .f-calendar-footnote{padding:0 5px}#folio-finance .f-time{flex-wrap:wrap}#folio-finance .f-time-nav{margin-left:auto}
+}
+#folio-finance .f-calendar-amount.f-income.heat-0{background:#fceeea;color:#281f1b}
+#folio-finance .f-calendar-amount.f-income.heat-1{background:#f8d6ce;color:#281f1b}
+#folio-finance .f-calendar-amount.f-income.heat-2{background:#edaa9b;color:#281f1b}
+#folio-finance .f-calendar-amount.f-income.heat-3{background:#b74a38;color:#ffffff}
+#folio-finance .f-calendar-amount.f-income.heat-4{background:#852719;color:#ffffff}
+#folio-finance .f-calendar-amount.f-expense.heat-0{background:#eaf5ee;color:#152b1d}
+#folio-finance .f-calendar-amount.f-expense.heat-1{background:#cbe5d5;color:#152b1d}
+#folio-finance .f-calendar-amount.f-expense.heat-2{background:#98c9ac;color:#152b1d}
+#folio-finance .f-calendar-amount.f-expense.heat-3{background:#347b51;color:#ffffff}
+#folio-finance .f-calendar-amount.f-expense.heat-4{background:#205c3b;color:#ffffff}
+</style>
+<div id="folio-finance"><div class="f-shell"><aside class="f-sidebar"><div class="f-logo">Finplot</div><div class="f-navlabel">个人财务</div><nav class="f-nav"><button data-page="overview">财务总览</button><button data-page="analysis">收支分析</button><button data-page="calendar">收支日历</button><button data-page="invest">投资记录</button><button data-page="transactions">全部交易</button></nav></aside><main class="f-main"><div class="f-top"><span id="crumb">财务总览</span></div><div class="f-heading"><div><h1 id="title">让财务，清晰一点。</h1><div id="subtitle" class="f-sub"></div></div><div class="f-time" id="time-picker">
 <div class="f-segment" role="group" aria-label="统计周期"><button data-period="month" aria-pressed="true">月度</button><button data-period="year" aria-pressed="false">年度</button></div>
 <div class="f-time-nav"><button class="f-time-arrow" data-step="-1" aria-label="上个月">‹</button><button id="date-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="date-panel"></button><button class="f-time-arrow" data-step="1" aria-label="下个月">›</button></div>
 <div id="date-panel" class="f-date-panel" role="dialog" aria-label="选择月份" hidden></div>
