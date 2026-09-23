@@ -72,4 +72,4 @@ python3 app/server.py
 
 如果 `data/` 中有多个数据库，程序会停止并列出候选文件，要求通过 `FINPLOT_DATABASE` 明确指定，避免误读账单。`.env.example` 提供了变量示例；项目不会自动读取 `.env`，启动前请在 Finder、终端或自己的启动脚本中设置环境变量。
 
-当前版本：`v0.1.5`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：`v0.1.6`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
