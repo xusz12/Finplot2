@@ -90,9 +90,9 @@ const money=n=>(n<0?'−':'')+'¥ '+(Math.abs(n)/100).toLocaleString('zh-CN',{mi
    await activate(11);await check('2025');
    await page.locator('[data-step="1"]').click();await activate(0);await check('2026-01');
    await page.locator('[data-category="2"]').click();
-   assert.equal(await page.locator('[data-close]').count(),1);
+   assert.equal(await page.locator('#overview-composition .f-composition-selected').count(),1);
    await activate(7);await check('2026-08');
-   assert.equal(await page.locator('[data-close]').count(),0);
+   assert.equal(await page.locator('#overview-composition .f-composition-selected').count(),0);
    await page.locator('#scope-trigger').click();await page.locator('[data-scope="all"]').check();
    await page.keyboard.press('Escape');await activate(7);
    assert.equal(await page.locator('#scope-trigger').innerText(),'范围：全部');

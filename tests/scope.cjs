@@ -53,7 +53,7 @@ const assert=require('node:assert/strict');
     if(await firstCategory.count()){
       const id=Number(await firstCategory.getAttribute('data-category'));await firstCategory.click();
       const expected=yearRows.filter(r=>r.category_id===id&&r.direction==='支出');
-      assert.equal(await page.locator('.f-bottom').first().locator('tbody tr').count(),expected.length);
+      assert.equal(await page.locator('#overview-composition .f-composition-transactions li').count(),Math.min(7,expected.length));
     }
     await page.locator('[data-period="month"]').click();
     await navigate('overview');await choose(['日常','投资']);

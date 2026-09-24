@@ -43,7 +43,7 @@ const money=n=>'¥ '+(n/100).toLocaleString('zh-CN',{minimumFractionDigits:2,max
    for(const direction of ['收入','支出']){
     await page.locator(`[data-direction="${direction}"]`).click();
     await page.locator('[data-category]').first().focus();await page.keyboard.press('Enter');
-    assert(await page.locator('.f-bottom').first().locator('tbody tr').count()>0);
+    assert(await page.locator('#overview-composition .f-composition-transactions li').count()>0);
    }
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   }

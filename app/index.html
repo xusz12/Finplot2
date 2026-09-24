@@ -142,6 +142,34 @@
 #folio-finance .f-changelog{overflow-wrap:anywhere}
 #folio-finance #title:focus{outline:none}
 @media(max-width:560px){#folio-finance .f-sidebottom{margin:0;padding:0}#folio-finance .f-settings{width:44px;padding:10px;justify-content:center}#folio-finance .f-settings span{display:none}#folio-finance .f-logo{gap:0}#folio-finance .f-version{font-size:10px}#folio-finance .f-sidebar{z-index:20}}
+
+#folio-finance .f-overview-grid{--f-overview-height:620px}
+#folio-finance .f-overview-trend{height:var(--f-overview-height);display:flex;flex-direction:column}
+#folio-finance .f-overview-trend>.f-panelhead{min-height:38px;flex-shrink:0}
+#folio-finance .f-overview-charts{display:grid;grid-template-rows:minmax(0,3.5fr) minmax(0,1fr);gap:14px;flex:1;min-height:0}
+#folio-finance .f-overview-charts .f-chart-wrap{min-height:0}
+#folio-finance .f-overview-charts .f-chart{width:100%;height:100%;aspect-ratio:auto}
+/* Keep overview drill-down in the same footprint as its composition chart. */
+#folio-finance .f-composition{height:var(--f-overview-height);display:flex;flex-direction:column;overflow:hidden;align-self:start}
+#folio-finance .f-composition .f-panelhead{flex-shrink:0}
+#folio-finance .f-composition-body{min-height:0;flex:1}
+#folio-finance .f-composition-selected{margin:0 0 14px;position:relative;z-index:1}
+#folio-finance .f-composition .f-rank button{min-height:38px}
+#folio-finance .f-composition .f-rankline{font-size:12px;flex-wrap:nowrap}
+#folio-finance .f-composition .f-rankline span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#folio-finance .f-composition .f-rankline b{flex-shrink:0}
+#folio-finance .f-composition-transactions{list-style:none;padding:0;margin:0}
+#folio-finance .f-composition-transactions li{height:61px;padding:10px 0;border-top:1px solid var(--f-line);box-sizing:border-box}
+#folio-finance .f-composition-row{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-variant-numeric:tabular-nums}
+#folio-finance .f-composition-row time{color:var(--f-muted)}
+#folio-finance .f-composition-row b{font-weight:500;white-space:nowrap}
+#folio-finance .f-composition-note{font-size:12px;line-height:18px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--f-muted)}
+#folio-finance .f-composition-footer{display:flex;align-items:center;justify-content:space-between;min-height:36px;flex-shrink:0;color:var(--f-muted);font-size:11px}
+#folio-finance .f-composition-pager{display:flex;gap:6px}
+#folio-finance .f-composition-pager button{width:36px;height:36px;border:1px solid var(--f-line);border-radius:50%;background:transparent;font-size:17px}
+#folio-finance .f-composition-pager button:disabled{opacity:.3;cursor:default}
+#folio-finance .f-composition-pager button:not(:disabled):hover{background:var(--f-bg)}
+
 </style>
 <div id="folio-finance"><div class="f-shell"><aside class="f-sidebar"><div class="f-logo"><span>Finplot</span><span class="f-version"></span></div><div class="f-navlabel">个人财务</div><nav class="f-nav" aria-label="主导航"><button data-page="overview">财务总览</button><button data-page="analysis">收支分析</button><button data-page="calendar">收支日历</button><button data-page="invest">投资记录</button><button data-page="transactions">全部交易</button></nav><div class="f-sidebottom"><button class="f-settings" data-page="settings" aria-label="打开设置"><svg class="lucide" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--f-panel)"/><circle cx="15" cy="17" r="3" fill="var(--f-panel)"/></svg><span>设置</span></button></div></aside><main class="f-main"><div class="f-top"><span id="crumb">财务总览</span></div><div class="f-heading"><div><h1 id="title" tabindex="-1">让财务，清晰一点。</h1><div id="subtitle" class="f-sub"></div></div><div class="f-controls"><div class="f-scope" id="scope-picker"><button id="scope-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="scope-panel">范围：日常</button><div id="scope-panel" class="f-scope-panel" role="dialog" aria-labelledby="scope-title" hidden><h2 id="scope-title">统计范围</h2><label><input type="radio" name="scope-all" data-scope="all">全部</label><hr><div role="group" aria-label="按性质选择"><label><input type="checkbox" data-scope="日常">日常</label><label><input type="checkbox" data-scope="投资">投资</label><label><input type="checkbox" data-scope="往来">往来</label><label><input type="checkbox" data-scope="调整">调整</label></div></div></div><div class="f-time" id="time-picker">
 <div class="f-segment" role="group" aria-label="统计周期"><button data-period="month" aria-pressed="true">月度</button><button data-period="year" aria-pressed="false">年度</button></div>
