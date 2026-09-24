@@ -26,7 +26,7 @@ APPLESCRIPT
   print -rn -- "$selected" > .finplot-database
 fi
 
-python3 app/server.py &
+python3 app/supervisor.py &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT INT TERM
 sleep 1

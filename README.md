@@ -72,4 +72,10 @@ python3 app/server.py
 
 如果 `data/` 中有多个数据库，程序会停止并列出候选文件，要求通过 `FINPLOT_DATABASE` 明确指定，避免误读账单。`.env.example` 提供了变量示例；项目不会自动读取 `.env`，启动前请在 Finder、终端或自己的启动脚本中设置环境变量。
 
-当前版本：`v0.1.7`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：`v0.1.8`。详细变化见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 版本检查与更新
+
+设置页提供“检查更新”，以 GitHub 稳定 tag 为准；确认后只以 fast-forward 更新，完成健康检查再恢复页面。请通过 `启动Finplot.command` 或 `python3 app/supervisor.py` 启动以支持自动重启；直接运行 `app/server.py` 只能检查。首次安装本功能需关闭旧服务，再用启动器启动一次。
+
+本地代码有修改或历史分叉时不会强制覆盖，账单和数据库路径配置保持不变。此功能随 v0.1.8 提供，详见 [版本更新说明](docs/UPDATES.md)。

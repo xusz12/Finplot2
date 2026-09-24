@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .finplot-database
+.finplot-update-status.json
 data/*
 !data/.gitkeep
 *.sqlite
@@ -14,3 +15,6 @@ dist/
 __pycache__/
 .venv/
 work/
+.finplot-update-status.tmp
+.finplot-update.lock
+.finplot-supervisor.lock

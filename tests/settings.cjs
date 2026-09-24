@@ -12,7 +12,7 @@ const fs=require('node:fs');
    await page.goto('http://127.0.0.1:8765');
    await page.waitForSelector('.f-stat');
    const version=await page.locator('.f-version').innerText();
-   assert.equal(version,'v0.1.7');
+   assert.equal(version,'v'+JSON.parse(fs.readFileSync('app/version.json','utf8')).version);
    const below=await page.locator('.f-logo').evaluate(el=>el.children[1].getBoundingClientRect().top>=el.children[0].getBoundingClientRect().bottom);
    assert.ok(below,'Version must be below product name');
    await page.locator('.f-settings').focus();await page.keyboard.press('Enter');

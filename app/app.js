@@ -217,6 +217,27 @@ function investmentTrend(rs){
 // Release notes mirror CHANGELOG.md; tests/settings.cjs checks they stay in sync.
 const changelog=[
   {
+  "version": "v0.1.8",
+  "date": "2026-09-24",
+  "items": [
+    {
+      "text": "设置页新增版本检查，以 GitHub 稳定 Git tag 为准，支持确认后更新并重启。"
+    },
+    {
+      "text": "统一运行版本来源为 version.json，启动器接入轻量 supervisor，更新期间显示进度并自动恢复连接。"
+    },
+    {
+      "text": "更新仅允许 fast-forward，校验已确认的 tag 与提交，阻止本地修改、分叉历史及文件冲突。"
+    },
+    {
+      "text": "增加重启健康检查和条件式失败回退，保留本地账单与数据库路径配置，不执行数据库迁移。"
+    },
+    {
+      "text": "增加更新接口保护、后端隔离测试及桌面与移动端更新交互回归。"
+    }
+  ]
+},
+  {
     "version": "v0.1.7",
     "date": "2026-09-23",
     "items": [
@@ -418,15 +439,70 @@ const changelog=[
     ]
   }
 ];
-const appVersion=changelog[0].version;
+let appVersion='读取中';
+fetch('/api/version').then(r=>{if(!r.ok)throw Error();return r.json()}).then(v=>{appVersion='v'+v.version;$('.f-version').textContent=appVersion;if(page==='settings'||page==='changelog')renderSettings()}).catch(()=>{$('.f-version').textContent='版本未知'});
 $('.f-version').textContent=appVersion;
 function renderChangelog(){return `<button class="f-back" data-page="settings">‹ 返回设置</button><section class="f-panel f-changelog">${changelog.map(entry=>`<article class="f-changelog-item"><div class="f-changelog-head"><h2>${esc(entry.version)}</h2>${entry.date?`<time class="f-changelog-date" datetime="${entry.date}">${entry.date}</time>`:''}</div>${entry.items.map(item=>item.heading?`<h3>${esc(item.heading)}</h3>`:`<ul><li>${esc(item.text)}</li></ul>`).join('')}</article>`).join('')}</section>`;}
+let updateCheckState={kind:'idle',message:'手动检查 GitHub 上的稳定版本，不会自动更新。'};
+let updateBusy=false;
+function updateView(){if(page==='settings')renderSettings();}
+function renderUpdatePanel(){
+  const s=updateCheckState;
+  return `<section class="f-panel f-update-panel"><div class="f-panelhead"><h2>版本与更新</h2><span class="f-update-current">${esc(appVersion)}</span></div><p class="f-update-message" role="status">${esc(s.message)}</p>${s.latest?`<p class="f-update-latest">GitHub 稳定版本：<strong>${esc(s.latest)}</strong></p>`:''}${s.kind==='available'?`<div class="f-update-actions"><button class="f-update-primary" data-update-apply ${s.managed?'':'disabled'}>更新并重启</button><span>更新期间服务会短暂断开，账单不会修改。</span></div>${s.managed?'':'<p class="f-update-message">请通过启动Finplot.command重新启动服务以启用自动更新。</p>'}`:''}<button class="f-update-check" data-update-check ${updateBusy?'disabled':''}>${s.kind==='checking'?'正在检查……':'检查更新'}</button></section>`;
+}
+async function updateRequest(path,options={}){
+  const r=await fetch(path,{...options,signal:AbortSignal.timeout(70000)});
+  const data=await r.json();if(!r.ok)throw Error(data.message||data.error||'请求失败。');return data;
+}
+async function checkForUpdate(){
+  if(updateBusy)return;updateBusy=true;
+  updateCheckState={kind:'checking',message:'正在连接 GitHub……'};updateView();
+  try{
+    const data=await updateRequest('/api/update/check');
+    const message=data.available?`发现新版本 ${data.latest}。`:!data.latest?'GitHub 尚未发布稳定 Tag。':data.current===data.latest?`当前已经是最新版本 ${data.current}。`:`本地版本 ${data.current} 领先于已发布 Tag，无需更新。`;
+    updateCheckState={...data,kind:data.available?'available':'latest',message};
+  }catch(e){updateCheckState={kind:'error',message:e.message||'检查更新失败，请稍后重试。'};}
+  updateBusy=false;updateView();
+}
+async function pollUpdate(){
+  for(let attempt=0;attempt<150;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,1500));
+    try{
+      const data=await updateRequest('/api/update/status');
+      updateCheckState={...updateCheckState,kind:'updating',message:data.message||'正在准备更新……'};updateView();
+      if(data.state==='succeeded'){
+        try{sessionStorage.setItem('finplot.update-result',data.message)}catch{}location.reload();return;
+      }
+      if(data.state==='failed'){updateCheckState.kind='error';break;}
+    }catch{updateCheckState.message='服务正在重启，正在恢复连接……';updateView();}
+  }
+  if(updateCheckState.kind!=='error')updateCheckState={kind:'error',message:'等待更新超时。请检查服务状态；重新打开设置可继续查看结果。'};
+  updateBusy=false;updateView();
+}
+async function applyUpdate(){
+  if(updateBusy)return;
+  const target=updateCheckState;
+  if(!confirm(`更新至 ${target.latest} 并重启 Finplot？服务会短暂断开，账单不会修改。`))return;
+  updateBusy=true;updateCheckState={...target,kind:'updating',message:'正在验证更新条件……'};updateView();
+  try{
+    await updateRequest('/api/update/apply',{method:'POST',headers:{'Content-Type':'application/json','X-Finplot-Update':'1'},body:JSON.stringify({tag:target.latest,commit:target.commit})});
+    await pollUpdate();
+  }catch(e){updateBusy=false;updateCheckState={kind:'error',message:e.message};updateView();}
+}
+// Restore an interrupted browser connection without querying GitHub automatically.
+updateRequest('/api/update/status').then(data=>{
+  if(updateBusy)return;
+  let restored=null;try{restored=sessionStorage.getItem('finplot.update-result');sessionStorage.removeItem('finplot.update-result')}catch{}
+  if(restored){page='settings';updateCheckState={kind:'latest',message:restored};render();}
+  else if(['running','restarting'].includes(data.state)){updateBusy=true;updateCheckState={kind:'updating',message:data.message};updateView();pollUpdate();}
+  else if(data.state==='failed'||data.state==='succeeded'){updateCheckState={kind:data.state==='failed'?'error':'latest',message:data.message};updateView();}
+}).catch(()=>{});
 function renderSettings(){
   const log=page==='changelog';
   $('#crumb').textContent=log?'设置 / 更新日志':'设置';
   $('#title').textContent=log?'更新日志':'设置';
   $('#subtitle').textContent=`Finplot ${appVersion} · ${log?'每一次改进，都记录在这里。':'关于产品与版本更新'}`;
-  $('#content').innerHTML=log?renderChangelog():`<section class="f-panel f-settings-list"><button class="f-settings-row" data-page="changelog"><span><strong>更新日志</strong><small>查看版本变化与功能改进</small></span><span aria-hidden="true">›</span></button></section>`;
+  $('#content').innerHTML=log?renderChangelog():`${renderUpdatePanel()}<section class="f-panel f-settings-list"><button class="f-settings-row" data-page="changelog"><span><strong>更新日志</strong><small>查看版本变化与功能改进</small></span><span aria-hidden="true">›</span></button></section>`;
 }
 function render(){
   const settings=page==='settings'||page==='changelog';
@@ -442,6 +518,8 @@ document.addEventListener('click',e=>{
   if(chartTarget){selectChartMonth(Number(chartTarget.dataset.index));return;}
   let b=e.target instanceof Element?e.target.closest('button'):null;if(!b)return;
   if(b.dataset.day){selectCalendarDay(b.dataset.day);return;}
+  if(b.hasAttribute('data-update-check')){checkForUpdate();return;}
+  if(b.hasAttribute('data-update-apply')){applyUpdate();return;}
   if(b.dataset.page){closeScopePanel();closeDatePanel(false);if(b.dataset.page==='calendar')period='month';page=b.dataset.page;category=null;render();window.scrollTo(0,0);$('#title').focus({preventScroll:true});return;}
   else if(b.dataset.period){if(page==='calendar')return;closeDatePanel(false);period=b.dataset.period;category=null;}
   else if(b.dataset.direction){direction=b.dataset.direction;category=null;}
